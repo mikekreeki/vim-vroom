@@ -76,8 +76,25 @@ if !exists("g:vroom_use_zeus")
   let g:vroom_use_zeus = 1
 endif
 
+let s:rspec_formatter = ' -f VimFormatter -r ' . expand("<sfile>:p:h") . '/../ruby/vim_formatter.rb'
+
 " }}}
 " Main functions {{{
+
+" Public: Run test suite
+"
+" args     - options for running the tests:
+"            'runner': the test runner to use (e.g., 'm')
+"            'options': any additional options (e.g., '--drb')
+function vroom#RunTestSuite(...)
+  if a:0
+    let opts = a:1
+  else
+    let opts = {}
+  endif
+
+  call s:RunTests("spec", s:Merge(opts, {'quickfix': 1}))
+endfunction
 
 " Public: Run current test file, or last test run
 "
@@ -158,8 +175,28 @@ function s:RunTests(filename, args)
   let runner        = get(a:args, 'runner', s:DetermineRunner(a:filename))
   let opts          = get(a:args, 'options', ''                          )
   let line_number   = get(a:args, 'line',    ''                          )
+  let quickfix      = get(a:args, 'quickfix', 0                          )
 
-  call s:Run(runner . ' ' . opts . ' ' . a:filename . line_number)
+  if quickfix
+    try
+      let makeprgbak = &makeprg
+      let efmbak = &efm
+      let &efm='%f:%l %m'
+      let opts.= s:rspec_formatter
+      let cmd = runner . ' ' . opts . ' ' . a:filename . line_number
+      let &makeprg = cmd
+      make
+      cw
+      if len(getqflist()) == 0
+        echo 'No errors! Yay!'
+      endif
+    finally
+      let &makeprg = makeprgbak
+      let &efm = efmbak
+    endtry
+  else
+    call s:Run(runner . ' ' . opts . ' ' . a:filename . line_number)
+  end
 endfunction
 
 " Internal: Get the right test runner for the file.
@@ -170,6 +207,8 @@ function s:DetermineRunner(filename)
     return s:test_runner_prefix . g:vroom_cucumber_path . g:vroom_cucumber_options . s:color_flag
   elseif match(a:filename, "_test.rb") != -1
     return s:test_runner_prefix . g:vroom_test_unit_command
+  elseif isdirectory('spec')
+    return s:test_runner_prefix . g:vroom_spec_command . s:color_flag
   end
 endfunction
 
