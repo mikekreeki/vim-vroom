@@ -276,10 +276,10 @@ endfunction
 " Internal: Set s:test_runner_prefix variable
 function s:SetTestRunnerPrefix(filename)
   let s:test_runner_prefix = ''
-  call s:IsUsingZeus()
-  call s:IsUsingBundleExec(a:filename)
   call s:IsUsingBinstubs()
+  call s:IsUsingBundleExec(a:filename)
   call s:IsUsingSpring()
+  call s:IsUsingZeus()
   call s:IsClearScreenEnabled()
 endfunction
 
